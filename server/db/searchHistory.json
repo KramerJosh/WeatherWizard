@@ -1,10 +1,10 @@
 [
-  {
-    "name": "New York",
-    "id": "bb3bc5f4-3462-4f07-a995-c04379e6bb5a"
-  },
-  {
-    "name": "Iowa",
-    "id": "9937123e-4887-4c06-a280-dacaf1f05e8a"
-  }
+	{
+		"name": "New York",
+		"id": "bb3bc5f4-3462-4f07-a995-c04379e6bb5a"
+	},
+	{
+		"name": "Iowa",
+		"id": "9937123e-4887-4c06-a280-dacaf1f05e8a"
+	}
 ]
