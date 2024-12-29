@@ -6,6 +6,7 @@
 
 
 import dotenv from 'dotenv';
+import dayjs from 'dayjs';
 dotenv.config();
 
 // // TODO: Define an interface for the Coordinates object
@@ -81,7 +82,7 @@ class WeatherService {
 
 //   // TODO: Create buildWeatherQuery method
   private buildWeatherQuery(coordinates: Coordinates): string { // gotta pass coordinates into here, maybe from the destructure location data method?
-    const weatherQuery = `${this.baseURL}/data/2.5/forecast?lat=${coordinates.lat}&lon=${coordinates.lon}&appid={API key}`
+    const weatherQuery = `${this.baseURL}/data/2.5/forecast?lat=${coordinates.lat}&lon=${coordinates.lon}&appid=${this.apiKey}`
   return weatherQuery;
   }
 
@@ -92,57 +93,84 @@ class WeatherService {
   );
   }
 //   // TODO: Create fetchWeatherData method
-  private async fetchWeatherData(coordinates: Coordinates) { //so here we get the weather data as a string, later we parse to json - maybe this needs to be an array?  it looks like we'll need that later on
+// the output of this needs to be manipulated to become an array?
+private async fetchWeatherData(coordinates: Coordinates) { //this is where the internal server error is coming from I think
 try {
   const response = await fetch(this.buildWeatherQuery(coordinates)).then((res) => 
-    res.json()
+    res.json() //storing in the constant "response" the response from buildweatherquery on input coords, converted to a json object.
   );
+
   //circle back to this
-  // const weatherData: Weather = response
+//   const weatherData: Weather = response;
+// return weatherData;
+
+// return response;
+console.log(response);
+// return {
+//   "city": "test" //for testing
+// }
+
 return response;
+
  // we should get current weather and weather over next five days
   }
 catch (error) {
+  // console.log(coordinates)
+  // console.log(response)
   console.error(error)
   return error
 }
 }
-// //   // TODO: Build parseCurrentWeather method
-//   private parseCurrentWeather(response: any) { //here we should take the output of fetchWeatherData, and parse just the first response?
-//     const parsedTime = response.list.dt_txt();
-//     console.log(parsedTime);
+  // TODO: Build parseCurrentWeather method
+  private parseCurrentWeather(response: any) {
+    const parsedTime = response.list.dt; //this will give us the time in unix, we'll need to day.js it.
+    const date = dayjs.unix(parsedTime);
+    const weatherDate = date.toDate();
 
-//     var currentWeather = new Weather(
-//       this.cityName,
-//       date, // figure out how to do date
-//       response.weather.icon,
-//       response.main.humidity,
-//       response.main.temp,
-//       response.wind.speed,
-//     )
-//     return currentWeather;
-//   }
-//   // TODO: Complete buildForecastArray method
-//   private buildForecastArray(currentWeather: Weather, weatherData: any[]) {
-//     }
+    console.log(`the raw time from the api is ${parsedTime}`);
+    console.log(`the processed date is ${date}`);
+    console.log(`the final date obeject is ${date}`);
 
-//   }
+
+    var currentWeather = new Weather(
+      this.cityName,
+      weatherDate,
+      response.weather.icon,
+      response.main.humidity,
+      response.main.temp,
+      response.wind.speed,
+    )
+    return currentWeather;
+  }
+  // TODO: Complete buildForecastArray method
+  private buildForecastArray(currentWeather: Weather, weatherData: any[]) {
+    const forecastArray: Weather[] = [];
+    forecastArray.push(currentWeather); //add the first weather object to the array
+    const perDayWeatherData = weatherData.filter((_, index) => (index) % 8 == 0); //creates a new array with every 8th entry, hopefully that equals 1 per day
+
+    for (let i = 1; i < 6; i++) { // from day 2 to day 5
+      const weather = this.parseCurrentWeather(perDayWeatherData[i]) // assign the return of from the method called on each day's data to a constant
+      forecastArray.push(weather); //add that to the array
+    }
+    return forecastArray;
+  }
+  
+
   // TODO: Complete getWeatherForCity method
   async getWeatherForCity(city: string) {
-    console.log(city); // this is just to get rid of error during testing
-    // this.buildForecastArray(city);
-    console.log(this.fetchAndDestructureLocationData()); //console loggin unused method for testing
-    const dummyWeather = {
-      lat: 3,
-      lon: 3
+    this.cityName = city; // assign the city argument to this.cityName
+    try {
+      const coordinates = await this.fetchAndDestructureLocationData();
+      const weatherData = await this.fetchWeatherData(coordinates);
+      const currentWeather = this.parseCurrentWeather(weatherData);
+      console.log(currentWeather);
+      const fiveDay = this.buildForecastArray(currentWeather, weatherData); //I have to pass in here currentWeather, and a weatherData array
+
+      return { currentWeather, fiveDay };
+    } catch (error) {
+      console.error('Error fetching weather data:', error);
+      throw error;
     }
-    console.log(this.fetchWeatherData(dummyWeather)) //console loggin unused method for testing
-    const testWeather = new Weather('new york', new Date(), 'test.png', 5, 5, 5) // creating test weather for bug clearing
-    console.log(testWeather)
-    return true; //using this return for testing
-
-
-
   }
 }
 
