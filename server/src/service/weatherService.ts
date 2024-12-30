@@ -6,7 +6,7 @@
 
 
 import dotenv from 'dotenv';
-import dayjs from 'dayjs';
+import dayjs, { Dayjs } from 'dayjs';
 dotenv.config();
 
 // // TODO: Define an interface for the Coordinates object
@@ -17,13 +17,13 @@ interface Coordinates {
 // // TODO: Define a class for the Weather object
 class Weather {
   city: string;
-  date: string;
+  date: Dayjs | string;
   icon: string;
   tempf: number;
   wind: number;
   humidity: number;
 
-  constructor(city: string, date: string, icon: string, tempf: number, wind: number, humidity: number) {
+  constructor(city: string, date: Dayjs | string, icon: string, tempf: number, wind: number, humidity: number) {
     this.city = city;
     this.date = date;
     this.icon = icon;
@@ -37,13 +37,12 @@ class Weather {
 // TODO: Complete the WeatherService class
 class WeatherService {
   // TODO: Define the baseURL, API key, and city name properties - not sure how to get cityName in here, if it is just going to be passed to methods
-  private baseURL: string;
-  private apiKey: string;
-  private cityName: string;
+  private baseURL?: string;
+  private apiKey?: string;
+  private cityName = "" ;
   constructor() {
     this.baseURL = process.env.API_BASE_URL || '';
     this.apiKey = process.env.API_KEY || '';
-    this.cityName = '' 
   }
 
 //   // TODO: Create fetchLocationData method - get the lat and lon from buildGeocodeQuery
@@ -52,27 +51,27 @@ class WeatherService {
       if(!this.baseURL || !this.apiKey){
         throw new Error("please check your url or key in .env")
       }
-      const response: Coordinates = await fetch(query).then((res) =>
+      const response: Coordinates[] = await fetch(query).then((res) =>
         res.json()
     );
-      return response;
+      return response[0];
     } catch(error) {
       console.error(error)
       throw error;
     }
   }
-//   // TODO: Create destructureLocationData method - HELP - we should pass the out put of fetchLocationData here as coordinates, and we expect to get coordinates back?
-  private destructureLocationData(locationData: Coordinates): Coordinates {
-    if(!locationData){
-      throw new Error("Please pass in a location")
-    }
-    const { lat, lon } = locationData;
-    const coordinates: Coordinates = { //this is the destructuring part, we're taking in something that has extra info, and we're just returning what we want
-      lat,
-      lon
-    }
-    return coordinates;
-  }
+// //   // TODO: Create destructureLocationData method - HELP - we should pass the out put of fetchLocationData here as coordinates, and we expect to get coordinates back?
+//   private destructureLocationData(locationData: Coordinates): Coordinates {
+//     if(!locationData){
+//       throw new Error("Please pass in a location")
+//     }
+//     const { lat, lon } = locationData;
+//     const coordinates: Coordinates = { //this is the destructuring part, we're taking in something that has extra info, and we're just returning what we want
+//       lat,
+//       lon
+//     }
+//     return coordinates;
+//   }
 
 //   // TODO: Create buildGeocodeQuery method //I think this is where I build the query - but I call it with fetch later
     private buildGeocodeQuery(): string {
@@ -94,13 +93,10 @@ class WeatherService {
   // get data back - specfically lat and long
   
   private async fetchAndDestructureLocationData() {
-    try {
-    return await this.fetchLocationData(this.buildGeocodeQuery()).then((data) =>
-    this.destructureLocationData(data)
-  );} catch(error) {
-    console.error(error)
-    throw error;
-  }}
+      return await this.fetchLocationData(this.buildGeocodeQuery()).then(
+        (data) => data
+      );
+}
 //   // TODO: Create fetchWeatherData method
 // the output of this needs to be manipulated to become an array?
 private async fetchWeatherData(coordinates: Coordinates) { //this is where the internal server error is coming from I think

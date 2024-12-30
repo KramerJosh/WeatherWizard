@@ -1,60 +1,48 @@
-import { Router, type Request, type Response } from "express";
-import HistoryService from '../../service/historyService.js';
-import WeatherService from "../../service/weatherService.js";
-
+import { type Request, type Response, Router } from "express";
 const router = Router();
 
-// TODO: POST Request with city name to retrieve weather data
-router.post("/", async (req: Request, res: Response) => {
+//internall
+import HistoryService from "../../service/historyService.js";
+import WeatherService from "../../service/weatherService.js";
+
+// POST Request with city name to retrieve weather data
+router.post('/', (req: Request, res: Response) => {
   try {
-    const { cityName } = req.body.cityName; // pull city name from the body of the request, and store in local variable  
-    // maybe trie it as
-    if (!cityName) {
-      return res.status(400).json({ error: "City name is required" });
-    }
-    // Get weather data from city name
-    const weatherData = await WeatherService.getWeatherForCity(cityName);
-    if (!weatherData) {
-      return res.status(404).json({ error: "Weather data not found" });
-    }
-    // TODO: save city to search history
-    await HistoryService.addCity(cityName);
-    // Return weather data as the response
-    return res
-      .status(200)
-      .json({
-        weatherData,
-        message: "City weather retrieved and saved to history",
-      });
+    const cityName = req.body.cityName;
+
+    WeatherService.getWeatherForCity(cityName).then((data) => {
+      HistoryService.addCity(cityName);
+
+      res.json(data);
+    });
   } catch (error) {
-    console.error("Error in POST request:", error);
-    return res.status(500).json({ error: "Internal Server Error in Post Request" });
+    res.status(500).json(error);
   }
 });
 
-// TODO: GET search history
-router.get("/history", async (_req: Request, res: Response) => {
+// GET search history
+router.get("/history", async (__req: Request, res: Response) => {
   try {
-    const cities = await HistoryService.getCities();
-    return res.status(200).json({ cities });
-  } catch (error) {
-    console.error("Error in GET /history:", error);
-    return res.status(500).json({ error: "Failed to retrieve search history" });
+    const savedCity = await HistoryService.getCities();
+    res.json(savedCity);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json(err);
   }
 });
 
-// * BONUS TODO: DELETE city from search history
-// router.delete("/history/:id", async (req: Request, res: Response) => {
-//   try {
-//     if (!req.params.id) {
-//       res.status(400).json({ msg: "State id is required" });
-//     }
-//     await HistoryService.removeCity(req.params.id);
-//     res.json({ success: "State successfully removed from search history" });
-//   } catch (err) {
-//     console.log(err);
-//     res.status(500).json(err);
-//   }
-// });
+// * BONUS DELETE city from search history
+router.delete("/history/:id", async (req: Request, res: Response) => {
+  try {
+    if (!req.params.id) {
+      res.status(400).json({ msg: "City id is required." });
+    }
+    await HistoryService.removeCity(req.params.id);
+    res.json({ success: "City successfully removed from search history." });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json(err);
+  }
+});
 
 export default router;
