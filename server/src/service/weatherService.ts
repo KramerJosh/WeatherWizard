@@ -17,13 +17,13 @@ interface Coordinates {
 // // TODO: Define a class for the Weather object
 class Weather {
   city: string;
-  date: Date;
+  date: string;
   icon: string;
   tempf: number;
   wind: number;
   humidity: number;
 
-  constructor(city: string, date: Date, icon: string, tempf: number, wind: number, humidity: number) {
+  constructor(city: string, date: string, icon: string, tempf: number, wind: number, humidity: number) {
     this.city = city;
     this.date = date;
     this.icon = icon;
@@ -76,41 +76,53 @@ class WeatherService {
 
 //   // TODO: Create buildGeocodeQuery method //I think this is where I build the query - but I call it with fetch later
     private buildGeocodeQuery(): string {
+      console.log(`Test City Name: ${this.cityName}`)
       const geoQuery = `${this.baseURL}/geo/1.0/direct?q=${this.cityName}&appid=${this.apiKey}`;
       return geoQuery;
     }
 
-//   // TODO: Create buildWeatherQuery method
+//   // TODO: Create buildWeatherQuery method //HELP - something going on here, maybe earlier.  Getting wrong latitude, and it's not passing coords as numbers
   private buildWeatherQuery(coordinates: Coordinates): string { // gotta pass coordinates into here, maybe from the destructure location data method?
     const weatherQuery = `${this.baseURL}/data/2.5/forecast?lat=${coordinates.lat}&lon=${coordinates.lon}&appid=${this.apiKey}`
+    console.log(`lat = ${coordinates.lat}`)
   return weatherQuery;
   }
 
   // TODO: Create fetchAndDestructureLocationData method - first we fetchLocationData, then we destructureLocationData?
+  // fetchLocationData makes sure that user includes the variables this.baseURL and this.baseAPIkey, it also makes sure that the query returns {lat, lon}
+  // build geocodequery returns the query string 
+  // get data back - specfically lat and long
+  
   private async fetchAndDestructureLocationData() {
+    try {
     return await this.fetchLocationData(this.buildGeocodeQuery()).then((data) =>
     this.destructureLocationData(data)
-  );
-  }
+  );} catch(error) {
+    console.error(error)
+    throw error;
+  }}
 //   // TODO: Create fetchWeatherData method
 // the output of this needs to be manipulated to become an array?
 private async fetchWeatherData(coordinates: Coordinates) { //this is where the internal server error is coming from I think
 try {
-  const response = await fetch(this.buildWeatherQuery(coordinates)).then((res) => 
-    res.json() //storing in the constant "response" the response from buildweatherquery on input coords, converted to a json object.
+  const response = await fetch(this.buildWeatherQuery(coordinates)).then(
+    (res) => res.json()
+  );
+  if (!response) {
+    throw new Error('Weather data not found');
+  }
+
+  const currentWeather: Weather = this.parseCurrentWeather(
+    response.list[0]
+  )
+
+  const forecast: Weather[] = this.buildForecastArray(
+    currentWeather,
+    response.list
   );
 
-  //circle back to this
-//   const weatherData: Weather = response;
-// return weatherData;
+  return forecast;
 
-// return response;
-console.log(response);
-// return {
-//   "city": "test" //for testing
-// }
-
-return response;
 
  // we should get current weather and weather over next five days
   }
@@ -122,20 +134,13 @@ catch (error) {
 }
 }
   // TODO: Build parseCurrentWeather method
-  private parseCurrentWeather(response: any) {
-    const parsedTime = response.list.dt; //this will give us the time in unix, we'll need to day.js it.
-    const date = dayjs.unix(parsedTime);
-    const weatherDate = date.toDate();
-
-    console.log(`the raw time from the api is ${parsedTime}`);
-    console.log(`the processed date is ${date}`);
-    console.log(`the final date obeject is ${date}`);
-
+  private parseCurrentWeather(response: any) {  //response comes from buildweatherquery api call
+    const parsedDate = dayjs.unix(response.dt).format('M/D/YYYY')
 
     var currentWeather = new Weather(
       this.cityName,
-      weatherDate,
-      response.weather.icon,
+      parsedDate,
+      response.weather[0].icon,
       response.main.humidity,
       response.main.temp,
       response.wind.speed,
@@ -144,29 +149,62 @@ catch (error) {
   }
   // TODO: Complete buildForecastArray method
   private buildForecastArray(currentWeather: Weather, weatherData: any[]) {
-    const forecastArray: Weather[] = [];
-    forecastArray.push(currentWeather); //add the first weather object to the array
-    const perDayWeatherData = weatherData.filter((_, index) => (index) % 8 == 0); //creates a new array with every 8th entry, hopefully that equals 1 per day
+    const weatherForecast: Weather[] = [currentWeather];
 
-    for (let i = 1; i < 6; i++) { // from day 2 to day 5
-      const weather = this.parseCurrentWeather(perDayWeatherData[i]) // assign the return of from the method called on each day's data to a constant
-      forecastArray.push(weather); //add that to the array
+    const filteredWeatherData = weatherData.filter((data:any) => {
+      return data.dt_txt.includes('12:00:00');
+    });
+
+    for (const day of filteredWeatherData) {
+      weatherForecast.push(
+        new Weather(
+          this.cityName,
+          dayjs.unix(day.dt).format('M/D/YYYY'),
+          day.weather[0].icon,
+          day.main.humidity,
+          day.main.temp,
+          day.wind.speed,
+        )
+      );
     }
-    return forecastArray;
+
+    return weatherForecast;
+
+
+// first idea for filtering below, keeping in for reference.
+    // const forecastArray: Weather[] = [];
+    // forecastArray.push(currentWeather); //add the first weather object to the array
+    // const perDayWeatherData = weatherData.filter((_, index) => (index) % 8 == 0); //creates a new array with every 8th entry, hopefully that equals 1 per day
+
+    // for (let i = 1; i < 6; i++) { // from day 2 to day 5
+    //   const weather = this.parseCurrentWeather(perDayWeatherData[i]) // assign the return of from the method called on each day's data to a constant
+    //   forecastArray.push(weather); //add that to the array
+    // }
+    // return forecastArray;
   }
   
 
   // TODO: Complete getWeatherForCity method
   async getWeatherForCity(city: string) {
-    this.cityName = city; // assign the city argument to this.cityName
     try {
+    this.cityName = city; // assign the city argument to this.cityName
       const coordinates = await this.fetchAndDestructureLocationData();
-      const weatherData = await this.fetchWeatherData(coordinates);
-      const currentWeather = this.parseCurrentWeather(weatherData);
-      console.log(currentWeather);
-      const fiveDay = this.buildForecastArray(currentWeather, weatherData); //I have to pass in here currentWeather, and a weatherData array
+      if (coordinates) {
+        const weather = await this.fetchWeatherData(coordinates);
+        return weather;
+      }
 
-      return { currentWeather, fiveDay };
+      throw new Error('Weather Data not Found');
+
+      //Old Code
+    // } catch (error)
+
+    //   // const weatherData = await this.fetchWeatherData(coordinates);
+    //   const currentWeather = this.parseCurrentWeather(weatherData);
+    //   console.log(currentWeather);
+    //   const fiveDay = this.buildForecastArray(currentWeather, weatherData); //I have to pass in here currentWeather, and a weatherData array
+
+    //   return { currentWeather, fiveDay };
     } catch (error) {
       console.error('Error fetching weather data:', error);
       throw error;

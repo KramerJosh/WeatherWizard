@@ -7,17 +7,18 @@ const router = Router();
 // TODO: POST Request with city name to retrieve weather data
 router.post("/", async (req: Request, res: Response) => {
   try {
-    const { city } = req.body; // pull city name from the body of the request, and store in local variable
-    if (!city) {
+    const { cityName } = req.body.cityName; // pull city name from the body of the request, and store in local variable  
+    // maybe trie it as
+    if (!cityName) {
       return res.status(400).json({ error: "City name is required" });
     }
     // Get weather data from city name
-    const weatherData = await WeatherService.getWeatherForCity(city);
+    const weatherData = await WeatherService.getWeatherForCity(cityName);
     if (!weatherData) {
       return res.status(404).json({ error: "Weather data not found" });
     }
     // TODO: save city to search history
-    await HistoryService.addCity(city);
+    await HistoryService.addCity(cityName);
     // Return weather data as the response
     return res
       .status(200)
