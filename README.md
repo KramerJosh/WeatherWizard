@@ -3,6 +3,9 @@ Second attempt at Challenge 9
 First attempt stored in this repo:
 https://github.com/KramerJosh/Challenge9
 
+**Important!!**
+It may take up to 4 minutes for the page to load, Render spins down if the page hasn't been loaded recently.  Please be patient and keep the window open!
+
 
 # Installation
 The below information may be useful for testing before you deploy.
